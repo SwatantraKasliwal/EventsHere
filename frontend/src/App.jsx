@@ -1,9 +1,10 @@
 import React from 'react'
 import Events from './Events'
+import Navigation from './Navigation'
 function App() {
   return (
     <div>
-      <Events/>
+      <Navigation/>
     </div>
   )
 }

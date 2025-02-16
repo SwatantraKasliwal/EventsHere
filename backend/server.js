@@ -1,7 +1,6 @@
 import express from "express";
 import bodyParser from "body-parser";
 import pkg from "pg";
-const { Pool } = pkg;
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import env from "dotenv";
@@ -9,30 +8,31 @@ import fileUpload from "express-fileupload";
 import nodemailer from "nodemailer";
 import cors from "cors";
 
-// Middleware and constants
+const { Pool } = pkg;
 const app = express();
 const port = 3000;
 const saltRounds = 10;
+
 env.config();
 
-// Add CORS middleware
+// CORS Middleware
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:5173", // Your React frontend URL
+    origin: process.env.FRONTEND_URL || "http://localhost:5173",
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
-// Create a connection pool instead of a single client
+// PostgreSQL Connection Pool
 const pool = new Pool({
   user: process.env.PG_USER,
   host: process.env.PG_HOST,
   database: process.env.PG_DATABASE,
   password: process.env.PG_PASSWORD,
   port: process.env.PG_PORT,
-  max: 20, // Maximum number of clients in the pool
+  max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
 });
@@ -42,7 +42,7 @@ app.use(bodyParser.json());
 app.use(express.static("public"));
 app.use(fileUpload());
 
-// JWT middleware for protected routes
+// JWT Middleware for Protected Routes
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
@@ -60,7 +60,7 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// Email service configuration
+// Email Service Configuration
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -71,7 +71,7 @@ const transporter = nodemailer.createTransport({
   debug: true,
 });
 
-// Send email to all users
+// Send Event Emails to Users
 async function sendEmailsToUsers(eventDetails) {
   try {
     const result = await pool.query("SELECT s_email FROM studentlogin");
@@ -111,7 +111,9 @@ app.post("/adminlogin", async (req, res) => {
         );
         return res.json({
           token,
+          userType: "admin",
           user: { id: admin.id, admin_id: admin.admin_id },
+          success:true,
         });
       }
     }
@@ -142,6 +144,7 @@ app.post("/studentlogin", async (req, res) => {
         );
         return res.json({
           token,
+          userType: "student",
           user: { id: student.id, email: student.s_email },
         });
       }
@@ -150,6 +153,11 @@ app.post("/studentlogin", async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
+});
+
+// Check User Info (For Frontend Navigation)
+app.get("/userinfo", authenticateToken, (req, res) => {
+  res.json({ userType: req.user.type });
 });
 
 // Protected Routes
@@ -169,27 +177,14 @@ app.get("/adminevent", authenticateToken, async (req, res) => {
   }
 });
 
-app.get("/studentevent", authenticateToken, async (req, res) => {
-  if (req.user.type !== "student") {
-    return res.status(403).json({ message: "Unauthorized" });
-  }
-
+app.get("/events", async (req, res) => {
   try {
-    const data = await pool.query(
-      "SELECT e.*,a.admin_id from event e join adminlogin a ON a.id = e.user_id ORDER BY e.event_id DESC"
-    );
+    const data = await pool.query("SELECT * FROM event");
     res.json(data.rows);
   } catch (err) {
-    res.status(500).json({ message: "Error loading events" });
+    res.status(500).json({ message: "Error retrieving events" });
   }
 });
-
-app.get("/events", async (req, res)=>{
-    const data = await pool.query(
-      "SELECT * FROM event"
-    );
-    res.json(data.rows);
-})
 
 // Event Management Routes
 app.post("/adminform", authenticateToken, async (req, res) => {
@@ -206,7 +201,7 @@ app.post("/adminform", authenticateToken, async (req, res) => {
     eventurl,
   } = req.body;
   const adminId = req.user.id;
-  const eventBanner = req.files.eventbanner;
+  const eventBanner = req.files?.eventbanner;
 
   try {
     await pool.query(
@@ -219,8 +214,8 @@ app.post("/adminform", authenticateToken, async (req, res) => {
         eventvenue,
         eventtime,
         eventurl,
-        eventBanner.name,
-        eventBanner.data,
+        eventBanner?.name,
+        eventBanner?.data,
       ]
     );
 
@@ -251,61 +246,6 @@ app.post("/delete", authenticateToken, async (req, res) => {
     res.json({ message: "Event deleted successfully" });
   } catch (err) {
     res.status(500).json({ message: "Error deleting event" });
-  }
-});
-
-// Registration Route
-app.post("/registerstudent", async (req, res) => {
-  const { username, password } = req.body;
-
-  try {
-    const checkResult = await pool.query(
-      "SELECT * FROM studentlogin WHERE s_email = $1",
-      [username]
-    );
-
-    if (checkResult.rows.length > 0) {
-      return res.status(400).json({ message: "Email already registered" });
-    }
-
-    const hash = await bcrypt.hash(password, saltRounds);
-    const result = await pool.query(
-      "INSERT INTO studentlogin (s_email, s_password) VALUES ($1, $2) RETURNING *",
-      [username, hash]
-    );
-
-    const token = jwt.sign(
-      { id: result.rows[0].id, email: username, type: "student" },
-      process.env.JWT_SECRET,
-      { expiresIn: "24h" }
-    );
-
-    res.json({ token, user: { id: result.rows[0].id, email: username } });
-  } catch (err) {
-    res.status(500).json({ message: "Error registering user" });
-  }
-});
-
-// Image Route
-app.get("/images/:imageName", async (req, res) => {
-  try {
-    const imageName = req.params.imageName;
-    const data = await pool.query(
-      "SELECT banner_data FROM event WHERE event_banner = $1",
-      [imageName]
-    );
-    if (data.rows.length > 0) {
-      const img = data.rows[0].banner_data;
-      res.writeHead(200, {
-        "Content-Type": "image/jpeg",
-        "Content-Length": img.length,
-      });
-      res.end(img);
-    } else {
-      res.status(404).json({ message: "Image not found" });
-    }
-  } catch (err) {
-    res.status(500).json({ message: "Error retrieving image" });
   }
 });
 
