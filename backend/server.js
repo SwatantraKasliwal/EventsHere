@@ -2,7 +2,6 @@ import express from "express";
 import bodyParser from "body-parser";
 import pkg from "pg";
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
 import env from "dotenv";
 import fileUpload from "express-fileupload";
 import nodemailer from "nodemailer";
@@ -21,7 +20,7 @@ app.use(
     origin: process.env.FRONTEND_URL || "http://localhost:5173",
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type"],
   })
 );
 
@@ -41,24 +40,6 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(express.static("public"));
 app.use(fileUpload());
-
-// JWT Middleware for Protected Routes
-const authenticateToken = (req, res, next) => {
-  const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1];
-
-  if (!token) {
-    return res.status(401).json({ message: "Authentication required" });
-  }
-
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) {
-      return res.status(403).json({ message: "Invalid or expired token" });
-    }
-    req.user = user;
-    next();
-  });
-};
 
 // Email Service Configuration
 const transporter = nodemailer.createTransport({
@@ -104,16 +85,10 @@ app.post("/adminlogin", async (req, res) => {
     if (result.rows.length > 0) {
       const admin = result.rows[0];
       if (password === admin.password) {
-        const token = jwt.sign(
-          { id: admin.id, admin_id: admin.admin_id, type: "admin" },
-          process.env.JWT_SECRET,
-          { expiresIn: "24h" }
-        );
         return res.json({
-          token,
           userType: "admin",
           user: { id: admin.id, admin_id: admin.admin_id },
-          success:true,
+          success: true,
         });
       }
     }
@@ -137,13 +112,7 @@ app.post("/studentlogin", async (req, res) => {
       const valid = await bcrypt.compare(password, student.s_password);
 
       if (valid) {
-        const token = jwt.sign(
-          { id: student.id, email: student.s_email, type: "student" },
-          process.env.JWT_SECRET,
-          { expiresIn: "24h" }
-        );
         return res.json({
-          token,
           userType: "student",
           user: { id: student.id, email: student.s_email },
         });
@@ -155,28 +124,7 @@ app.post("/studentlogin", async (req, res) => {
   }
 });
 
-// Check User Info (For Frontend Navigation)
-app.get("/userinfo", authenticateToken, (req, res) => {
-  res.json({ userType: req.user.type });
-});
-
-// Protected Routes
-app.get("/adminevent", authenticateToken, async (req, res) => {
-  if (req.user.type !== "admin") {
-    return res.status(403).json({ message: "Unauthorized" });
-  }
-
-  try {
-    const data = await pool.query(
-      "SELECT e.*,a.admin_id from event e join adminlogin a ON a.id = e.user_id WHERE e.user_id = $1 ORDER BY e.event_id DESC;",
-      [req.user.id]
-    );
-    res.json(data.rows);
-  } catch (err) {
-    res.status(500).json({ message: "Error loading events" });
-  }
-});
-
+// Event Management Routes
 app.get("/events", async (req, res) => {
   try {
     const data = await pool.query("SELECT * FROM event");
@@ -186,59 +134,59 @@ app.get("/events", async (req, res) => {
   }
 });
 
-// Event Management Routes
-app.post("/adminform", authenticateToken, async (req, res) => {
-  if (req.user.type !== "admin") {
+app.post("/admin-form", async (req, res) => {
+  if (req.body.type === "admin") {
+    const {
+      eventName,
+      eventDetails,
+      eventDate,
+      eventTime,
+      eventVenue,
+      eventUrl,
+    } = req.body;
+    const adminId = req.body.adminId;
+
+    const eventBanner = req.files?.eventBanner;
+    if (!eventBanner) {
+      return res.status(400).json({ message: "Event banner is required" });
+    }
+
+    try {
+      await pool.query(
+        "INSERT INTO event (event_name, event_details, event_date, user_id, event_venue, event_time, event_url, event_banner, banner_data) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+        [
+          eventName,
+          eventDetails,
+          eventDate,
+          adminId,
+          eventVenue,
+          eventTime,
+          eventUrl,
+          eventBanner.name,
+          eventBanner.data,
+        ]
+      );
+
+      await sendEmailsToUsers({
+        eventName,
+        eventDetails,
+        eventDate,
+        eventTime,
+        eventVenue,
+        eventUrl,
+      });
+
+      res.json({ message: "Event created successfully", success: true });
+    } catch (err) {
+      console.error("Error adding event:", err);
+      res.status(500).json({ message: "Error adding event", success: false });
+    }
+  } else {
     return res.status(403).json({ message: "Unauthorized" });
-  }
-
-  const {
-    eventname,
-    eventdetails,
-    eventdate,
-    eventtime,
-    eventvenue,
-    eventurl,
-  } = req.body;
-  const adminId = req.user.id;
-  const eventBanner = req.files?.eventbanner;
-
-  try {
-    await pool.query(
-      "INSERT INTO event (event_name, event_details, event_date, user_id, event_venue, event_time, event_url, event_banner, banner_data) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-      [
-        eventname,
-        eventdetails,
-        eventdate,
-        adminId,
-        eventvenue,
-        eventtime,
-        eventurl,
-        eventBanner?.name,
-        eventBanner?.data,
-      ]
-    );
-
-    await sendEmailsToUsers({
-      eventname,
-      eventdetails,
-      eventdate,
-      eventtime,
-      eventvenue,
-      eventurl,
-    });
-
-    res.json({ message: "Event created successfully" });
-  } catch (err) {
-    res.status(500).json({ message: "Error adding event" });
   }
 });
 
-app.post("/delete", authenticateToken, async (req, res) => {
-  if (req.user.type !== "admin") {
-    return res.status(403).json({ message: "Unauthorized" });
-  }
-
+app.post("/delete", async (req, res) => {
   const { deleteEventId } = req.body;
 
   try {

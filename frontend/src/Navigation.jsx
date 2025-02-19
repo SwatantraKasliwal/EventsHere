@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Link,
+  Navigate,
+} from "react-router-dom";
 import AdminLogin from "./AdminLogin";
 import Home from "./Home";
 import Student from "./Student";
@@ -8,17 +14,16 @@ import Events from "./Events";
 import AddEvent from "./AddEvent"; // Component for adding events
 
 function Navigation() {
-  const [userType, setUserType] = useState(null); // null = not logged in, "admin" = admin logged in, "student" = student logged in
+  const [userType, setUserType] = useState(null);
+  const [adminId, setAdminId] = useState(null);
 
-  // Check localStorage for existing login state
   useEffect(() => {
     const savedUser = localStorage.getItem("userType");
-    if (savedUser) {
+    if (savedUser === "admin" || savedUser === "student") {
       setUserType(savedUser);
     }
   }, []);
 
-  // Function to handle logout
   const handleLogout = () => {
     localStorage.removeItem("userType");
     setUserType(null);
@@ -76,16 +81,25 @@ function Navigation() {
         <Route path="/about" element={<About />} />
         <Route
           path="/adminlogin"
-          element={<AdminLogin setUserType={setUserType} />}
+          element={<AdminLogin setUserType={setUserType} setAdminId={setAdminId} />}
         />
         <Route
           path="/student"
           element={<Student setUserType={setUserType} />}
         />
         <Route path="/events" element={<Events />} />
-        {userType === "admin" && (
-          <Route path="/add-event" element={<AddEvent />} />
-        )}
+
+        {/* Ensure only admins can access AddEvent */}
+        <Route
+          path="/add-event"
+          element={
+            userType === "admin" ? (
+              <AddEvent type={userType} adminId={adminId}/>
+            ) : (
+              <Navigate to="/" />
+            )
+          }
+        />
       </Routes>
     </Router>
   );

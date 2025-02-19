@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
-function AdminLogin({ setUserType }) {
+function AdminLogin({ setUserType,setAdminId }) {
   const [adminName, setAdmin] = useState("");
   const [adminPass, setPass] = useState("");
   const navigate = useNavigate();
@@ -21,6 +21,10 @@ function AdminLogin({ setUserType }) {
       if (response.data.success) {
         localStorage.setItem("userType", "admin");
         setUserType("admin");
+        const userId = response.data.user.id;
+        console.log(userId);
+        alert(userId)
+        setAdminId(userId);
         navigate("/"); // Redirect to home
       } else {
         alert("Invalid credentials");
