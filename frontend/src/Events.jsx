@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
-const Events = () => {
+const Events = ({ userType }) => {
   const [events, setEvents] = useState([]);
 
   useEffect(() => {
     fetchEvents();
-    alert("To join the event please register or login"); // Alert when page loads
+    if(userType !== "student"){
+      alert("To join the event please register or login"); // Alert when page loads
+    }
   }, []);
 
   const fetchEvents = async () => {
@@ -28,7 +30,7 @@ const Events = () => {
 
   return (
     <div>
-      <h2 >Upcoming Events</h2>
+      <h2>Upcoming Events</h2>
       {events.length === 0 ? (
         <p>No upcoming events</p>
       ) : (
@@ -39,31 +41,22 @@ const Events = () => {
 
           return (
             <article key={event.event_id}>
-              <img
-                src={event.event_banner}
-                alt={event.event_name}
-              />
+              <img src={event.event_banner} alt={event.event_name} />
               <div>
-                <h3 >{event.event_name}</h3>
+                <h3>{event.event_name}</h3>
                 <div>
-                
                   {eventDate.toLocaleDateString()}, {event.event_time}
                 </div>
-                <p >{event.event_details}</p>
-                <ul >
-                  <li>
-                    
-                    Venue: {event.event_venue}
-                  </li>
-                  <li>
-                    
-                    Organizer: {event.admin_id}
-                  </li>
-                  <li>
-                    
-                    Status: {isToday ? "The Event is Today" : "Upcoming"}
-                  </li>
+                <p>{event.event_details}</p>
+                <ul>
+                  <li>Venue: {event.event_venue}</li>
+                  <li>Organizer: {event.admin_id}</li>
+                  <li>Status: {isToday ? "The Event is Today" : "Upcoming"}</li>
                 </ul>
+                {/* Show Register button only if userType is 'student' */}
+                {userType === "student" && (
+                  <a href={event.event_url}>Register for Event</a>
+                )}
               </div>
             </article>
           );

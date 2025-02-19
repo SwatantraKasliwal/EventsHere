@@ -87,7 +87,7 @@ function Navigation() {
           path="/student-login"
           element={<Student setUserType={setUserType} />}
         />
-        <Route path="/events" element={<Events />} />
+        <Route path="/events" element={<Events userType={userType}  />} />
         <Route path="/register" element={<Register setUserType={setUserType} />} />
         {/* Ensure only admins can access AddEvent */}
         <Route
