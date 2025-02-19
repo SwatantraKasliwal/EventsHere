@@ -1,22 +1,18 @@
 import React, { useState, useEffect } from "react";
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Link,
-  Navigate,
-} from "react-router-dom";
+import { Routes, Route, Link, Navigate, useNavigate } from "react-router-dom";
 import AdminLogin from "./AdminLogin";
 import Home from "./Home";
 import Student from "./Student";
 import About from "./About";
 import Events from "./Events";
 import AddEvent from "./AddEvent"; // Component for adding events
+import AdminEvent from "./AdminEvent";
+import Register from "./Register";
 
 function Navigation() {
   const [userType, setUserType] = useState(null);
   const [adminId, setAdminId] = useState(null);
-
+  const navigate = useNavigate();
   useEffect(() => {
     const savedUser = localStorage.getItem("userType");
     if (savedUser === "admin" || savedUser === "student") {
@@ -27,10 +23,12 @@ function Navigation() {
   const handleLogout = () => {
     localStorage.removeItem("userType");
     setUserType(null);
+    setAdminId(null);
+    navigate("/events");
   };
 
   return (
-    <Router>
+    <>
       <nav>
         <ul>
           <li>
@@ -39,7 +37,7 @@ function Navigation() {
           {userType === "admin" ? (
             <>
               <li>
-                <Link to="/events">Admin Events</Link>
+                <Link to="/admin-events">Admin Events</Link>
               </li>
               <li>
                 <Link to="/add-event">Add Event</Link>
@@ -66,7 +64,7 @@ function Navigation() {
                 <Link to="/adminlogin">Admin</Link>
               </li>
               <li>
-                <Link to="/student">Student</Link>
+                <Link to="/student-login">Student</Link>
               </li>
               <li>
                 <Link to="/events">Events</Link>
@@ -81,27 +79,39 @@ function Navigation() {
         <Route path="/about" element={<About />} />
         <Route
           path="/adminlogin"
-          element={<AdminLogin setUserType={setUserType} setAdminId={setAdminId} />}
+          element={
+            <AdminLogin setUserType={setUserType} setAdminId={setAdminId} />
+          }
         />
         <Route
-          path="/student"
+          path="/student-login"
           element={<Student setUserType={setUserType} />}
         />
         <Route path="/events" element={<Events />} />
-
+        <Route path="/register" element={<Register setUserType={setUserType} />} />
         {/* Ensure only admins can access AddEvent */}
         <Route
           path="/add-event"
           element={
             userType === "admin" ? (
-              <AddEvent type={userType} adminId={adminId}/>
+              <AddEvent adminId={adminId} />
+            ) : (
+              <Navigate to="/" />
+            )
+          }
+        />
+        <Route
+          path="/admin-events"
+          element={
+            userType === "admin" ? (
+              <AdminEvent adminId={adminId} />
             ) : (
               <Navigate to="/" />
             )
           }
         />
       </Routes>
-    </Router>
+    </>
   );
 }
 

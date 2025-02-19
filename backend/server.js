@@ -98,36 +98,66 @@ app.post("/adminlogin", async (req, res) => {
   }
 });
 
-app.post("/studentlogin", async (req, res) => {
-  const { username, password } = req.body;
+app.post("/student-login", async (req, res) => {
+  const { studentName, studentPass } = req.body;
 
   try {
     const result = await pool.query(
       "SELECT * FROM studentlogin WHERE s_email = $1",
-      [username]
+      [studentName]
     );
 
     if (result.rows.length > 0) {
       const student = result.rows[0];
-      const valid = await bcrypt.compare(password, student.s_password);
-
+      const valid = await bcrypt.compare(studentPass, student.s_password);
       if (valid) {
         return res.json({
           userType: "student",
           user: { id: student.id, email: student.s_email },
+          success:true
         });
       }
     }
-    res.status(401).json({ message: "Invalid credentials" });
+    res.status(401).json({ message: "Invalid credentials", success:false });
   } catch (err) {
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error" , success:false});
+  }
+});
+
+app.post("/student-register", async (req, res)=>{
+  const {email, password} = req.body;
+  try{
+    const userEmail = await pool.query("SELECT * FROM studentlogin WHERE s_email=$1", [email]);
+    if(userEmail.rows.length > 0){
+     return res
+       .status(400)
+       .json({
+         message: "User already registered, please login",
+         success: false,
+       });
+
+    }else{
+      const hashPass = await bcrypt.hash(password, saltRounds);
+      const student = await pool.query(
+        "INSERT INTO studentlogin(s_email, s_password) VALUES ($1, $2) RETURNING *",
+        [email, hashPass]
+      );
+      res.json({
+        message: "User registered Successfully",
+        success: true,
+        userType: "student",
+        user: { id: student.id, email: student.s_email },
+      });
+    }
+  }catch(err){
+    res.json({message:"Error in registering the user", success:false})
   }
 });
 
 // Event Management Routes
 app.get("/events", async (req, res) => {
   try {
-    const data = await pool.query("SELECT * FROM event");
+    const data = await pool.query("SELECT e.*, a.admin_id FROM event e JOIN adminlogin a ON a.id = e.user_id ORDER BY e.event_id DESC;");
     res.json(data.rows);
   } catch (err) {
     res.status(500).json({ message: "Error retrieving events" });
@@ -135,6 +165,7 @@ app.get("/events", async (req, res) => {
 });
 
 app.post("/admin-form", async (req, res) => {
+  console.log("admin check:", req.body.type, "id check:", req.body.adminId);
   if (req.body.type === "admin") {
     const {
       eventName,
@@ -196,6 +227,44 @@ app.post("/delete", async (req, res) => {
     res.status(500).json({ message: "Error deleting event" });
   }
 });
+
+app.get("/admin-events", async (req, res) => {
+  // const { adminId } = req.query; // Get adminId from query params
+
+  // if (!adminId) {
+  //   return res.status(400).json({ message: "Admin ID is required" });
+  // }
+
+  // try {
+  //   const data = await pool.query("SELECT * FROM event WHERE user_id = $1", [
+  //     adminId,
+  //   ]);
+  //   res.json(data.rows);
+  // } catch (err) {
+  //   res.status(500).json({ message: "Error retrieving events" });
+  // }
+
+    const adminId = req.query.adminId; // Use query params
+    try {
+      const data = await pool.query("SELECT * FROM event WHERE user_id = $1", [
+        adminId,
+      ]);
+
+      const events = data.rows.map((event) => ({
+        ...event,
+        event_banner: event.banner_data
+          ? `data:image/png;base64,${event.banner_data.toString("base64")}`
+          : null, // Convert BYTEA to base64
+      }));
+
+      res.json(events);
+    } catch (err) {
+      console.error("Error retrieving events:", err);
+      res.status(500).json({ message: "Error retrieving events" });
+    }
+  });
+
+
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);

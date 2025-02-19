@@ -1,27 +1,76 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
-function Events() {
-  const [event, setEvent] = useState([]);
+const Events = () => {
+  const [events, setEvents] = useState([]);
 
   useEffect(() => {
-    axios
-      .get("http://localhost:3000/events")
-      .then((res) => setEvent(res.data)) // You need to set the data to state
-      .catch((error) => console.error("Error fetching events:", error)); // Add error handling
+    fetchEvents();
+    alert("To join the event please register or login"); // Alert when page loads
   }, []);
+
+  const fetchEvents = async () => {
+    try {
+      const response = await axios.get("http://localhost:3000/events");
+      const currentDate = new Date();
+
+      // Filter upcoming events
+      const upcomingEvents = response.data.filter((event) => {
+        const eventDate = new Date(event.event_date);
+        return eventDate >= currentDate;
+      });
+
+      setEvents(upcomingEvents);
+    } catch (error) {
+      console.error("Error fetching events:", error);
+    }
+  };
 
   return (
     <div>
-      {/* Map through the events to display them */}
-      {event.map((e) => (
-        <div key={e.event_id}>
-          <p>{e.event_name}</p>
-          {/* Add other event properties you want to display */}
-        </div>
-      ))}
+      <h2 >Upcoming Events</h2>
+      {events.length === 0 ? (
+        <p>No upcoming events</p>
+      ) : (
+        events.map((event) => {
+          const eventDate = new Date(event.event_date);
+          const isToday =
+            new Date().toLocaleDateString() === eventDate.toLocaleDateString();
+
+          return (
+            <article key={event.event_id}>
+              <img
+                src={event.event_banner}
+                alt={event.event_name}
+              />
+              <div>
+                <h3 >{event.event_name}</h3>
+                <div>
+                
+                  {eventDate.toLocaleDateString()}, {event.event_time}
+                </div>
+                <p >{event.event_details}</p>
+                <ul >
+                  <li>
+                    
+                    Venue: {event.event_venue}
+                  </li>
+                  <li>
+                    
+                    Organizer: {event.admin_id}
+                  </li>
+                  <li>
+                    
+                    Status: {isToday ? "The Event is Today" : "Upcoming"}
+                  </li>
+                </ul>
+              </div>
+            </article>
+          );
+        })
+      )}
     </div>
   );
-}
+};
 
 export default Events;

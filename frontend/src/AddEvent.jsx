@@ -57,7 +57,7 @@ function AddEvent({ type,adminId }) {
 
       if (response.data.success) {
         alert(response.data.message);
-        navigate("/events"); // Redirect after success
+        navigate("/admin-events"); // Redirect after success
       } else {
         alert(response.data.message);
       }

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 function Student({ setUserType }) {
   const [studentName, setStudentName] = useState("");
@@ -13,10 +13,14 @@ function Student({ setUserType }) {
   const handleSubmit = async (event) => {
     event.preventDefault();
     try {
-      const response = await axios.post("http://localhost:3000/studentlogin", {
-        username: studentName,
-        password: studentPass,
-      });
+      const response = await axios.post(
+        "http://localhost:3000/student-login",
+        {
+          studentName,
+          studentPass
+        },
+        { withCredentials: true }
+      );
 
       if (response.data.success) {
         localStorage.setItem("userType", "student");
@@ -35,7 +39,7 @@ function Student({ setUserType }) {
     <div>
       <h2>Student Login</h2>
       <form onSubmit={handleSubmit}>
-        <label htmlFor="username">Username</label>
+        <label htmlFor="username">Email</label>
         <input
           type="email"
           value={studentName}
@@ -51,6 +55,12 @@ function Student({ setUserType }) {
         />
         <button type="submit">Login</button>
       </form>
+      <div>
+        New user ?
+        <p>
+          <Link to="/register">Register</Link>
+        </p>
+      </div>
     </div>
   );
 }
