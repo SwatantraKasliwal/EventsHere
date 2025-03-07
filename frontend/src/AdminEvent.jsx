@@ -82,7 +82,7 @@ const fetchEvents = async () => {
               </td>
               <td>
                 <img
-                  src={`/images/${event.event_banner}`}
+                  src={event.event_banner}
                   alt="Event Banner"
                   style={{ width: "100px", height: "100px" }}
                 />

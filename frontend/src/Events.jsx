@@ -38,10 +38,13 @@ const Events = ({ userType }) => {
           const eventDate = new Date(event.event_date);
           const isToday =
             new Date().toLocaleDateString() === eventDate.toLocaleDateString();
-
           return (
             <article key={event.event_id}>
-              <img src={event.event_banner} alt={event.event_name} />
+              <img
+                src={event.event_banner}
+                alt={event.event_name}
+              />
+
               <div>
                 <h3>{event.event_name}</h3>
                 <div>

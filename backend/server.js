@@ -154,15 +154,27 @@ app.post("/student-register", async (req, res)=>{
   }
 });
 
-// Event Management Routes
 app.get("/events", async (req, res) => {
   try {
-    const data = await pool.query("SELECT e.*, a.admin_id FROM event e JOIN adminlogin a ON a.id = e.user_id ORDER BY e.event_id DESC;");
-    res.json(data.rows);
+    const data = await pool.query(
+      "SELECT e.*, a.admin_id FROM event e JOIN adminlogin a ON a.id = e.user_id ORDER BY e.event_id DESC;"
+    );
+
+    // Convert BYTEA to Base64
+    const events = data.rows.map((event) => ({
+      ...event,
+      event_banner: event.banner_data
+        ? `data:image/png;base64,${event.banner_data.toString("base64")}`
+        : null, // Ensure conversion
+    }));
+
+    res.json(events);
   } catch (err) {
+    console.error("Error retrieving events:", err);
     res.status(500).json({ message: "Error retrieving events" });
   }
 });
+
 
 app.post("/admin-form", async (req, res) => {
   console.log("admin check:", req.body.type, "id check:", req.body.adminId);
@@ -229,21 +241,6 @@ app.post("/delete", async (req, res) => {
 });
 
 app.get("/admin-events", async (req, res) => {
-  // const { adminId } = req.query; // Get adminId from query params
-
-  // if (!adminId) {
-  //   return res.status(400).json({ message: "Admin ID is required" });
-  // }
-
-  // try {
-  //   const data = await pool.query("SELECT * FROM event WHERE user_id = $1", [
-  //     adminId,
-  //   ]);
-  //   res.json(data.rows);
-  // } catch (err) {
-  //   res.status(500).json({ message: "Error retrieving events" });
-  // }
-
     const adminId = req.query.adminId; // Use query params
     try {
       const data = await pool.query("SELECT * FROM event WHERE user_id = $1", [
