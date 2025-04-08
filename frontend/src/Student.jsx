@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
 
-function Student({ setUserType }) {
+function Student({ setUserType,setStudentId }) {
   const [studentName, setStudentName] = useState("");
   const [studentPass, setStudentPass] = useState("");
   const navigate = useNavigate();
@@ -24,7 +24,10 @@ function Student({ setUserType }) {
 
       if (response.data.success) {
         localStorage.setItem("userType", "student");
+        localStorage.setItem("studentId", response.data.user.id); // Store student ID
         setUserType("student");
+        setStudentId(response.data.user.id);
+        alert(response.data.user.id);
         navigate("/");
       } else {
         alert("Invalid credentials");

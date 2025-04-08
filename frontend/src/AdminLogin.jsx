@@ -20,10 +20,11 @@ function AdminLogin({ setUserType,setAdminId }) {
 
       if (response.data.success) {
         localStorage.setItem("userType", "admin");
+        localStorage.setItem("adminId", response.data.user.id); // Store admin ID
         setUserType("admin");
         const userId = response.data.user.id;
         console.log(userId);
-        alert(userId)
+        alert(userId);
         setAdminId(userId);
         navigate("/"); // Redirect to home
       } else {

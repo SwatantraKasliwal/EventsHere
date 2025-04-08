@@ -2,13 +2,12 @@ import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
 
-function Register({ setUserType }) {
+function Register({ setUserType,setStudentId }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPass, setConfirmPass] = useState("");
   const navigate = useNavigate();
 
-  
   function handleEmailChange(event) {
     setEmail(event.target.value);
   }
@@ -33,7 +32,9 @@ function Register({ setUserType }) {
           if (res.data.success) {
             alert(res.data.message);
             localStorage.setItem("userType", "student");
+            localStorage.setItem("studentId", res.data.user.id); // Store student ID
             setUserType("student");
+            setStudentId(res.data.user.id); // Store student ID
             navigate("/");
           } else {
             alert(res.data.message);

@@ -43,6 +43,7 @@ const Events = ({ userType }) => {
               <img
                 src={event.event_banner}
                 alt={event.event_name}
+                style={{ width: "10rem", height: "auto" }}
               />
 
               <div>

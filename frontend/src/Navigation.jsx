@@ -12,18 +12,29 @@ import Register from "./Register";
 function Navigation() {
   const [userType, setUserType] = useState(null);
   const [adminId, setAdminId] = useState(null);
+  const [studentId, setStudentId] = useState(null);
   const navigate = useNavigate();
+
   useEffect(() => {
     const savedUser = localStorage.getItem("userType");
-    if (savedUser === "admin" || savedUser === "student") {
+    const savedAdminId = localStorage.getItem("adminId");
+    const savedStudentId = localStorage.getItem("studentId");
+    if (savedAdminId && savedUser === "admin") {
+      setAdminId(savedAdminId);
       setUserType(savedUser);
     }
+    if (savedStudentId && savedUser === "student") {
+      setStudentId(savedStudentId);
+    setUserType(savedUser);
+    }
+
   }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("userType");
     setUserType(null);
     setAdminId(null);
+    setStudentId(null);
     navigate("/events");
   };
 
@@ -85,10 +96,17 @@ function Navigation() {
         />
         <Route
           path="/student-login"
-          element={<Student setUserType={setUserType} />}
+          element={
+            <Student setUserType={setUserType} setStudentId={setStudentId} />
+          }
         />
-        <Route path="/events" element={<Events userType={userType}  />} />
-        <Route path="/register" element={<Register setUserType={setUserType} />} />
+        <Route path="/events" element={<Events userType={userType} />} />
+        <Route
+          path="/register"
+          element={
+            <Register setUserType={setUserType} setStudentId={setStudentId} />
+          }
+        />
         {/* Ensure only admins can access AddEvent */}
         <Route
           path="/add-event"
