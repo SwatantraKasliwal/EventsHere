@@ -6,6 +6,7 @@ import env from "dotenv";
 import fileUpload from "express-fileupload";
 import nodemailer from "nodemailer";
 import cors from "cors";
+import { v2 as cloudinary } from "cloudinary";
 
 const { Pool } = pkg;
 const app = express();
@@ -13,6 +14,13 @@ const port = 3000;
 const saltRounds = 10;
 
 env.config();
+
+// Cloudinary Configuration
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 // CORS Middleware
 app.use(
@@ -39,7 +47,12 @@ const pool = new Pool({
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(express.static("public"));
-app.use(fileUpload());
+app.use(
+  fileUpload({
+    useTempFiles: true, // This option is important for Cloudinary
+    tempFileDir: "/tmp/",
+  })
+);
 
 // Email Service Configuration
 const transporter = nodemailer.createTransport({
@@ -57,6 +70,11 @@ async function sendEmailsToUsers(eventDetails) {
   try {
     const result = await pool.query("SELECT s_email FROM studentlogin");
     const emails = result.rows.map((row) => row.s_email);
+
+    if (emails.length === 0) {
+      console.log("No emails to send to");
+      return;
+    }
 
     const mailOptions = {
       from: process.env.EMAIL_USER,
@@ -114,29 +132,29 @@ app.post("/student-login", async (req, res) => {
         return res.json({
           userType: "student",
           user: { id: student.id, email: student.s_email },
-          success:true
+          success: true,
         });
       }
     }
-    res.status(401).json({ message: "Invalid credentials", success:false });
+    res.status(401).json({ message: "Invalid credentials", success: false });
   } catch (err) {
-    res.status(500).json({ message: "Server error" , success:false});
+    res.status(500).json({ message: "Server error", success: false });
   }
 });
 
-app.post("/student-register", async (req, res)=>{
-  const {email, password} = req.body;
-  try{
-    const userEmail = await pool.query("SELECT * FROM studentlogin WHERE s_email=$1", [email]);
-    if(userEmail.rows.length > 0){
-     return res
-       .status(400)
-       .json({
-         message: "User already registered, please login",
-         success: false,
-       });
-
-    }else{
+app.post("/student-register", async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    const userEmail = await pool.query(
+      "SELECT * FROM studentlogin WHERE s_email=$1",
+      [email]
+    );
+    if (userEmail.rows.length > 0) {
+      return res.status(400).json({
+        message: "User already registered, please login",
+        success: false,
+      });
+    } else {
       const hashPass = await bcrypt.hash(password, saltRounds);
       const student = await pool.query(
         "INSERT INTO studentlogin(s_email, s_password) VALUES ($1, $2) RETURNING *",
@@ -146,11 +164,11 @@ app.post("/student-register", async (req, res)=>{
         message: "User registered Successfully",
         success: true,
         userType: "student",
-        user: { id: student.id, email: student.s_email },
+        user: { id: student.rows[0].id, email: student.rows[0].s_email },
       });
     }
-  }catch(err){
-    res.json({message:"Error in registering the user", success:false})
+  } catch (err) {
+    res.json({ message: "Error in registering the user", success: false });
   }
 });
 
@@ -160,77 +178,15 @@ app.get("/events", async (req, res) => {
       "SELECT e.*, a.admin_id FROM event e JOIN adminlogin a ON a.id = e.user_id ORDER BY e.event_id DESC;"
     );
 
-    // Convert BYTEA to Base64
-    const events = data.rows.map((event) => ({
-      ...event,
-      event_banner: event.banner_data
-        ? `data:image/png;base64,${event.banner_data.toString("base64")}`
-        : null, // Ensure conversion
-    }));
-
-    res.json(events);
+    res.json(data.rows);
   } catch (err) {
     console.error("Error retrieving events:", err);
     res.status(500).json({ message: "Error retrieving events" });
   }
 });
 
-
-// app.post("/admin-form", async (req, res) => {
-//   console.log("admin check:", req.body.type, "id check:", req.body.adminId);
-//   if (req.body.type === "admin") {
-//     const {
-//       eventName,
-//       eventDetails,
-//       eventDate,
-//       eventTime,
-//       eventVenue,
-//       eventUrl,
-//     } = req.body;
-//     const adminId = req.body.adminId;
-
-//     const eventBanner = req.files?.eventBanner;
-//     if (!eventBanner) {
-//       return res.status(400).json({ message: "Event banner is required" });
-//     }
-
-//     try {
-//       await pool.query(
-//         "INSERT INTO event (event_name, event_details, event_date, user_id, event_venue, event_time, event_url, event_banner, banner_data) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-//         [
-//           eventName,
-//           eventDetails,
-//           eventDate,
-//           adminId,
-//           eventVenue,
-//           eventTime,
-//           eventUrl,
-//           eventBanner.name,
-//           eventBanner.data,
-//         ]
-//       );
-
-//       await sendEmailsToUsers({
-//         eventName,
-//         eventDetails,
-//         eventDate,
-//         eventTime,
-//         eventVenue,
-//         eventUrl,
-//       });
-
-//       res.json({ message: "Event created successfully", success: true });
-//     } catch (err) {
-//       console.error("Error adding event:", err);
-//       res.status(500).json({ message: "Error adding event", success: false });
-//     }
-//   } else {
-//     return res.status(403).json({ message: "Unauthorized" });
-//   }
-// });
-
 app.post("/admin-form", async (req, res) => {
-  console.log("Received event submission:", req.body);
+  console.log("Received event submission request");
 
   if (req.body.type === "admin") {
     const {
@@ -254,8 +210,20 @@ app.post("/admin-form", async (req, res) => {
     const eventBanner = req.files.eventBanner;
 
     try {
+      // Upload image to Cloudinary
+      const cloudinaryUpload = await cloudinary.uploader.upload(
+        eventBanner.tempFilePath,
+        {
+          folder: "event_banners", // Create a folder in Cloudinary
+          resource_type: "image",
+        }
+      );
+
+      console.log("Image uploaded to Cloudinary:", cloudinaryUpload.secure_url);
+
+      // Insert event with the Cloudinary URL instead of storing binary data
       const result = await pool.query(
-        "INSERT INTO event (event_name, event_details, event_date, user_id, event_venue, event_time, event_url, event_banner, banner_data) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING event_id",
+        "INSERT INTO event (event_name, event_details, event_date, user_id, event_venue, event_time, event_url, event_banner) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING event_id",
         [
           eventName,
           eventDetails,
@@ -264,8 +232,7 @@ app.post("/admin-form", async (req, res) => {
           eventVenue,
           eventTime,
           eventUrl,
-          eventBanner.name,
-          eventBanner.data,
+          cloudinaryUpload.secure_url, // Store URL instead of binary
         ]
       );
 
@@ -285,6 +252,7 @@ app.post("/admin-form", async (req, res) => {
         message: "Event created successfully",
         success: true,
         eventId,
+        imageUrl: cloudinaryUpload.secure_url,
       });
     } catch (err) {
       console.error("Error adding event:", err);
@@ -294,12 +262,10 @@ app.post("/admin-form", async (req, res) => {
       });
     }
   } else {
-    return res
-      .status(403)
-      .json({
-        message: "Unauthorized - Admin privileges required",
-        success: false,
-      });
+    return res.status(403).json({
+      message: "Unauthorized - Admin privileges required",
+      success: false,
+    });
   }
 });
 
@@ -307,35 +273,52 @@ app.post("/delete", async (req, res) => {
   const { deleteEventId } = req.body;
 
   try {
+    // First get the event to retrieve the image URL
+    const eventResult = await pool.query(
+      "SELECT event_banner FROM event WHERE event_id = $1",
+      [deleteEventId]
+    );
+
+    if (eventResult.rows.length > 0) {
+      const imageUrl = eventResult.rows[0].event_banner;
+
+      // Check if this is a Cloudinary URL and extract the public ID
+      if (imageUrl && imageUrl.includes("cloudinary.com")) {
+        // Extract the public ID from the URL
+        const publicIdMatch = imageUrl.match(
+          /\/event_banners\/([^/]+)(\.\w+)?/
+        );
+        if (publicIdMatch) {
+          const publicId = `event_banners/${publicIdMatch[1]}`;
+          // Delete the image from Cloudinary
+          await cloudinary.uploader.destroy(publicId);
+          console.log(`Deleted image ${publicId} from Cloudinary`);
+        }
+      }
+    }
+
+    // Delete the event from the database
     await pool.query("DELETE FROM event WHERE event_id = $1", [deleteEventId]);
-    res.json({ message: "Event deleted successfully" });
+    res.json({ message: "Event deleted successfully", success: true });
   } catch (err) {
-    res.status(500).json({ message: "Error deleting event" });
+    console.error("Error deleting event:", err);
+    res.status(500).json({ message: "Error deleting event", success: false });
   }
 });
 
 app.get("/admin-events", async (req, res) => {
-    const adminId = req.query.adminId; // Use query params
-    try {
-      const data = await pool.query("SELECT * FROM event WHERE user_id = $1", [
-        adminId,
-      ]);
+  const adminId = req.query.adminId; // Use query params
+  try {
+    const data = await pool.query("SELECT * FROM event WHERE user_id = $1", [
+      adminId,
+    ]);
 
-      const events = data.rows.map((event) => ({
-        ...event,
-        event_banner: event.banner_data
-          ? `data:image/png;base64,${event.banner_data.toString("base64")}`
-          : null, // Convert BYTEA to base64
-      }));
-
-      res.json(events);
-    } catch (err) {
-      console.error("Error retrieving events:", err);
-      res.status(500).json({ message: "Error retrieving events" });
-    }
-  });
-
-
+    res.json(data.rows);
+  } catch (err) {
+    console.error("Error retrieving events:", err);
+    res.status(500).json({ message: "Error retrieving events" });
+  }
+});
 
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);

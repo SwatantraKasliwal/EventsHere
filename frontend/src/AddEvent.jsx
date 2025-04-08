@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -10,10 +9,27 @@ function AddEvent({ type, adminId }) {
   const [eventTime, setEventTime] = useState("");
   const [eventVenue, setEventVenue] = useState("");
   const [eventBanner, setEventBanner] = useState(null);
-  const [eventUrl, setEventUrl] = useState(""); // Changed to match backend field name
+  const [eventUrl, setEventUrl] = useState("");
+  const [previewUrl, setPreviewUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const navigate = useNavigate();
+
+  // Handle image selection and preview
+  const handleFileChange = (e) => {
+    if (e.target.files.length > 0) {
+      const file = e.target.files[0];
+      setEventBanner(file);
+
+      // Create a preview URL
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -31,9 +47,9 @@ function AddEvent({ type, adminId }) {
     }
 
     setIsSubmitting(true);
+    setUploadProgress(0);
 
     const formData = new FormData();
-    // Match these field names exactly with what the backend expects
     formData.append("eventName", eventName);
     formData.append("eventDetails", eventDetails);
     formData.append("eventDate", eventDate);
@@ -45,12 +61,17 @@ function AddEvent({ type, adminId }) {
     formData.append("adminId", adminId);
 
     try {
-      // Don't set Content-Type header - axios will set it with correct boundary for FormData
       const response = await axios.post(
         "http://localhost:3000/admin-form",
         formData,
         {
           withCredentials: true,
+          onUploadProgress: (progressEvent) => {
+            const percentCompleted = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total
+            );
+            setUploadProgress(percentCompleted);
+          },
         }
       );
 
@@ -136,11 +157,25 @@ function AddEvent({ type, adminId }) {
             type="file"
             id="eventBanner"
             accept="image/*"
-            onChange={(e) =>
-              e.target.files.length > 0 && setEventBanner(e.target.files[0])
-            }
+            onChange={handleFileChange}
             required
           />
+
+          {/* Image preview */}
+          {previewUrl && (
+            <div className="image-preview">
+              <img
+                src={previewUrl}
+                alt="Preview"
+                style={{
+                  maxWidth: "100%",
+                  maxHeight: "200px",
+                  marginTop: "10px",
+                  borderRadius: "4px",
+                }}
+              />
+            </div>
+          )}
         </div>
 
         <div className="form-group">
@@ -154,8 +189,35 @@ function AddEvent({ type, adminId }) {
           />
         </div>
 
-        <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Submitting..." : "Submit"}
+        {isSubmitting && (
+          <div className="progress-bar-container">
+            <div
+              className="progress-bar"
+              style={{
+                width: `${uploadProgress}%`,
+                height: "10px",
+                backgroundColor: "#4CAF50",
+                borderRadius: "5px",
+                marginBottom: "20px",
+              }}
+            ></div>
+            <p>{uploadProgress}% Uploaded</p>
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          style={{
+            backgroundColor: isSubmitting ? "#cccccc" : "#4CAF50",
+            color: "white",
+            padding: "10px 15px",
+            border: "none",
+            borderRadius: "4px",
+            cursor: isSubmitting ? "not-allowed" : "pointer",
+          }}
+        >
+          {isSubmitting ? "Uploading..." : "Submit Event"}
         </button>
       </form>
     </div>
@@ -163,5 +225,3 @@ function AddEvent({ type, adminId }) {
 }
 
 export default AddEvent;
-
-
