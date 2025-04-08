@@ -176,8 +176,62 @@ app.get("/events", async (req, res) => {
 });
 
 
+// app.post("/admin-form", async (req, res) => {
+//   console.log("admin check:", req.body.type, "id check:", req.body.adminId);
+//   if (req.body.type === "admin") {
+//     const {
+//       eventName,
+//       eventDetails,
+//       eventDate,
+//       eventTime,
+//       eventVenue,
+//       eventUrl,
+//     } = req.body;
+//     const adminId = req.body.adminId;
+
+//     const eventBanner = req.files?.eventBanner;
+//     if (!eventBanner) {
+//       return res.status(400).json({ message: "Event banner is required" });
+//     }
+
+//     try {
+//       await pool.query(
+//         "INSERT INTO event (event_name, event_details, event_date, user_id, event_venue, event_time, event_url, event_banner, banner_data) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+//         [
+//           eventName,
+//           eventDetails,
+//           eventDate,
+//           adminId,
+//           eventVenue,
+//           eventTime,
+//           eventUrl,
+//           eventBanner.name,
+//           eventBanner.data,
+//         ]
+//       );
+
+//       await sendEmailsToUsers({
+//         eventName,
+//         eventDetails,
+//         eventDate,
+//         eventTime,
+//         eventVenue,
+//         eventUrl,
+//       });
+
+//       res.json({ message: "Event created successfully", success: true });
+//     } catch (err) {
+//       console.error("Error adding event:", err);
+//       res.status(500).json({ message: "Error adding event", success: false });
+//     }
+//   } else {
+//     return res.status(403).json({ message: "Unauthorized" });
+//   }
+// });
+
 app.post("/admin-form", async (req, res) => {
-  console.log("admin check:", req.body.type, "id check:", req.body.adminId);
+  console.log("Received event submission:", req.body);
+
   if (req.body.type === "admin") {
     const {
       eventName,
@@ -189,14 +243,19 @@ app.post("/admin-form", async (req, res) => {
     } = req.body;
     const adminId = req.body.adminId;
 
-    const eventBanner = req.files?.eventBanner;
-    if (!eventBanner) {
-      return res.status(400).json({ message: "Event banner is required" });
+    // Check if files were uploaded properly
+    if (!req.files || !req.files.eventBanner) {
+      return res.status(400).json({
+        message: "Event banner is required",
+        success: false,
+      });
     }
 
+    const eventBanner = req.files.eventBanner;
+
     try {
-      await pool.query(
-        "INSERT INTO event (event_name, event_details, event_date, user_id, event_venue, event_time, event_url, event_banner, banner_data) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+      const result = await pool.query(
+        "INSERT INTO event (event_name, event_details, event_date, user_id, event_venue, event_time, event_url, event_banner, banner_data) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING event_id",
         [
           eventName,
           eventDetails,
@@ -210,22 +269,37 @@ app.post("/admin-form", async (req, res) => {
         ]
       );
 
+      const eventId = result.rows[0].event_id;
+
+      // Send emails to users
       await sendEmailsToUsers({
-        eventName,
-        eventDetails,
-        eventDate,
-        eventTime,
-        eventVenue,
-        eventUrl,
+        eventname: eventName,
+        eventdetails: eventDetails,
+        eventdate: eventDate,
+        eventtime: eventTime,
+        eventvenue: eventVenue,
+        eventurl: eventUrl,
       });
 
-      res.json({ message: "Event created successfully", success: true });
+      res.json({
+        message: "Event created successfully",
+        success: true,
+        eventId,
+      });
     } catch (err) {
       console.error("Error adding event:", err);
-      res.status(500).json({ message: "Error adding event", success: false });
+      res.status(500).json({
+        message: "Error adding event: " + err.message,
+        success: false,
+      });
     }
   } else {
-    return res.status(403).json({ message: "Unauthorized" });
+    return res
+      .status(403)
+      .json({
+        message: "Unauthorized - Admin privileges required",
+        success: false,
+      });
   }
 });
 
@@ -264,5 +338,5 @@ app.get("/admin-events", async (req, res) => {
 
 
 app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+  console.log(`Server running on http://localhost:${port}`);
 });

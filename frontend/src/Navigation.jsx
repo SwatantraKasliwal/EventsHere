@@ -94,7 +94,7 @@ function Navigation() {
           path="/add-event"
           element={
             userType === "admin" ? (
-              <AddEvent adminId={adminId} />
+              <AddEvent adminId={adminId} type="admin" />
             ) : (
               <Navigate to="/" />
             )
