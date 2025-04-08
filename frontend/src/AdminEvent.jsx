@@ -1,8 +1,9 @@
+// export default AdminEvent;
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-// import "./AdminEventManagement.css";
+import "./AdminEvent.css";
 
-const AdminEvent = ({adminId}) => {
+const AdminEvent = ({ adminId }) => {
   const [events, setEvents] = useState([]);
   const [deleteEventId, setDeleteEventId] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -11,17 +12,16 @@ const AdminEvent = ({adminId}) => {
     fetchEvents();
   }, []);
 
-const fetchEvents = async () => {
-  try {
-    const response = await axios.get(
-      `http://localhost:3000/admin-events?adminId=${adminId}`
-    );
-    setEvents(response.data);
-  } catch (error) {
-    console.error("Error fetching events:", error);
-  }
-};
-
+  const fetchEvents = async () => {
+    try {
+      const response = await axios.get(
+        `http://localhost:3000/admin-events?adminId=${adminId}`
+      );
+      setEvents(response.data);
+    } catch (error) {
+      console.error("Error fetching events:", error);
+    }
+  };
 
   const handleDeleteClick = (eventId) => {
     setDeleteEventId(eventId);
@@ -81,11 +81,7 @@ const fetchEvents = async () => {
                 </a>
               </td>
               <td>
-                <img
-                  src={event.event_banner}
-                  alt="Event Banner"
-                  style={{ width: "100px", height: "100px" }}
-                />
+                <img src={event.event_banner} alt="Event Banner" />
               </td>
             </tr>
           ))}

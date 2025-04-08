@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-
+import "./Events.css"; // Import your CSS file for styling
 const Events = ({ userType }) => {
   const [events, setEvents] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -8,13 +8,15 @@ const Events = ({ userType }) => {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [relatedEvents, setRelatedEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
     fetchCategories();
     fetchEvents();
 
     if (userType !== "student") {
-      alert("To join the event please register or login");
+      // Commented out to avoid annoying alert during development
+      // alert("To join the event please register or login");
     }
   }, []);
 
@@ -31,6 +33,34 @@ const Events = ({ userType }) => {
       fetchEvents();
     }
   }, [selectedCategory]);
+
+  // Add event listener to close modal on escape key
+  useEffect(() => {
+    const handleEscKey = (event) => {
+      if (event.keyCode === 27) {
+        closeModal();
+      }
+    };
+
+    window.addEventListener("keydown", handleEscKey);
+
+    return () => {
+      window.removeEventListener("keydown", handleEscKey);
+    };
+  }, []);
+
+  // Prevent body scrolling when modal is open
+  useEffect(() => {
+    if (modalOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [modalOpen]);
 
   const fetchEvents = async () => {
     setLoading(true);
@@ -98,6 +128,11 @@ const Events = ({ userType }) => {
 
   const handleEventClick = (event) => {
     setSelectedEvent(event);
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
   };
 
   const handleCategoryChange = (e) => {
@@ -123,8 +158,23 @@ const Events = ({ userType }) => {
     );
   };
 
+  // Event date in more descriptive format for modal
+  const getFormattedEventDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
   if (loading) {
-    return <div>Loading events...</div>;
+    return (
+      <div className="loading-container">
+        <div className="loading-spinner"></div>
+      </div>
+    );
   }
 
   return (
@@ -148,91 +198,142 @@ const Events = ({ userType }) => {
         </div>
       </div>
 
-      <div className="events-list">
-        {events.length === 0 ? (
+      {events.length === 0 ? (
+        <div className="no-events">
           <p>
             No upcoming events{" "}
             {selectedCategory ? `in ${selectedCategory}` : ""}
           </p>
-        ) : (
-          <div className="events-grid">
-            {events.map((event) => (
-              <article
-                key={event.event_id}
-                className={`event-card ${
-                  selectedEvent?.event_id === event.event_id ? "selected" : ""
-                }`}
-                onClick={() => handleEventClick(event)}
-              >
-                <img
-                  src={event.event_banner || "/api/placeholder/300/200"}
-                  alt={event.event_name}
-                  className="event-banner"
-                  style={{ width: "10rem", height: "5rem" }}
-                />
-                <div className="event-content">
-                  <h3>{event.event_name}</h3>
-                  <div className="event-date">
-                    {formatDate(event.event_date)}, {event.event_time}
-                  </div>
-                  <p className="event-details">
-                    {event.event_details?.substring(0, 100)}...
-                  </p>
-                  <ul className="event-meta">
-                    <li>Venue: {event.event_venue}</li>
-                    <li>Organizer: {event.admin_id}</li>
-                    <li
-                      className={
-                        isToday(event.event_date) ? "today-highlight" : ""
-                      }
-                    >
-                      Status:{" "}
-                      {isToday(event.event_date)
-                        ? "The Event is Today"
-                        : "Upcoming"}
-                    </li>
-                  </ul>
-                  {userType === "student" && (
-                    <a href={event.event_url} className="register-btn">
-                      Register for Event
-                    </a>
-                  )}
+        </div>
+      ) : (
+        <div className="events-grid">
+          {events.map((event) => (
+            <article
+              key={event.event_id}
+              className="event-card"
+              onClick={() => handleEventClick(event)}
+            >
+              <img
+                src={event.event_banner || "/api/placeholder/300/200"}
+                alt={event.event_name}
+                className="event-banner"
+              />
+              <div className="event-content">
+                <h3>{event.event_name}</h3>
+                <div className="event-date">
+                  {formatDate(event.event_date)}, {event.event_time}
                 </div>
-              </article>
-            ))}
-          </div>
-        )}
-      </div>
+                <p className="event-details">
+                  {event.event_details?.substring(0, 100)}...
+                </p>
+                <ul className="event-meta">
+                  <li>Venue: {event.event_venue}</li>
+                  <li>Organizer: {event.admin_id}</li>
+                  <li
+                    className={
+                      isToday(event.event_date) ? "today-highlight" : ""
+                    }
+                  >
+                    Status:{" "}
+                    {isToday(event.event_date)
+                      ? "The Event is Today"
+                      : "Upcoming"}
+                  </li>
+                </ul>
+                {userType === "student" && (
+                  <a
+                    href={event.event_url}
+                    className="register-btn"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    Register for Event
+                  </a>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
 
-      {selectedEvent && (
-        <div className="event-details-section">
-          <h3>Event Details</h3>
-          <div className="selected-event">
-            <h4>{selectedEvent.event_name}</h4>
-            <p>{selectedEvent.event_details}</p>
+      {/* Event Details Modal */}
+      {modalOpen && selectedEvent && (
+        <div className="event-modal-overlay" onClick={closeModal}>
+          <div className="event-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="event-modal-header">
+              <h3>{selectedEvent.event_name}</h3>
+              <button className="close-modal" onClick={closeModal}>
+                ×
+              </button>
+            </div>
+            <div className="event-modal-content">
+              <img
+                src={selectedEvent.event_banner || "/api/placeholder/800/400"}
+                alt={selectedEvent.event_name}
+                className="event-modal-banner"
+              />
 
-            {relatedEvents.length > 0 && (
-              <div className="related-events">
-                <h4>Related Events</h4>
-                <div className="related-events-list">
-                  {relatedEvents.map((event) => (
-                    <div key={event.event_id} className="related-event-card">
-                      <h5>{event.event_name}</h5>
-                      <p>Date: {formatDate(event.event_date)}</p>
-                      <p>Category: {event.category_name}</p>
-                      {userType === "student" && (
-                        <a
-                          href={event.event_url}
-                          className="register-btn-small"
-                        >
-                          Register
-                        </a>
-                      )}
-                    </div>
-                  ))}
+              <div className="event-info-grid">
+                <div className="event-info-item">
+                  <h4>Date & Time</h4>
+                  <p>{getFormattedEventDate(selectedEvent.event_date)}</p>
+                  <p>{selectedEvent.event_time}</p>
+                </div>
+                <div className="event-info-item">
+                  <h4>Venue</h4>
+                  <p>{selectedEvent.event_venue}</p>
+                </div>
+                <div className="event-info-item">
+                  <h4>Organizer</h4>
+                  <p>{selectedEvent.admin_id}</p>
+                </div>
+                <div className="event-info-item">
+                  <h4>Status</h4>
+                  <p
+                    className={
+                      isToday(selectedEvent.event_date) ? "today-highlight" : ""
+                    }
+                  >
+                    {isToday(selectedEvent.event_date)
+                      ? "The Event is Today"
+                      : "Upcoming"}
+                  </p>
                 </div>
               </div>
-            )}
+
+              <div className="event-modal-details">
+                <h4>Event Description</h4>
+                <p>{selectedEvent.event_details}</p>
+              </div>
+
+              {userType === "student" && (
+                <a href={selectedEvent.event_url} className="register-btn">
+                  Register for Event
+                </a>
+              )}
+
+              {relatedEvents.length > 0 && (
+                <>
+                  <h4 className="related-events-heading">Related Events</h4>
+                  <div className="related-events-grid">
+                    {relatedEvents.map((event) => (
+                      <div key={event.event_id} className="related-event-card">
+                        <h5>{event.event_name}</h5>
+                        <p>Date: {formatDate(event.event_date)}</p>
+                        <p>Category: {event.category_name}</p>
+                        {userType === "student" && (
+                          <a
+                            href={event.event_url}
+                            className="register-btn-small"
+                          >
+                            Register
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}

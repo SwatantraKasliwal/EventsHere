@@ -1,10 +1,13 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
+import "./Authentication.css"; // Assuming you have a CSS file for styling
 
-function Student({ setUserType,setStudentId }) {
+function Student({ setUserType, setStudentId }) {
   const [studentName, setStudentName] = useState("");
   const [studentPass, setStudentPass] = useState("");
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleNameChange = (event) => setStudentName(event.target.value);
@@ -12,56 +15,80 @@ function Student({ setUserType,setStudentId }) {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    setError("");
+    setIsLoading(true);
+
     try {
       const response = await axios.post(
         "http://localhost:3000/student-login",
         {
           studentName,
-          studentPass
+          studentPass,
         },
         { withCredentials: true }
       );
 
       if (response.data.success) {
         localStorage.setItem("userType", "student");
-        localStorage.setItem("studentId", response.data.user.id); // Store student ID
+        localStorage.setItem("studentId", response.data.user.id);
         setUserType("student");
         setStudentId(response.data.user.id);
-        alert(response.data.user.id);
         navigate("/");
       } else {
-        alert("Invalid credentials");
+        setError("Invalid credentials. Please try again.");
       }
     } catch (error) {
       console.error("Login Failed:", error);
-      alert("Login failed");
+      setError("Login failed. Please check your connection and try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div>
+    <div className="auth-container">
       <h2>Student Login</h2>
-      <form onSubmit={handleSubmit}>
-        <label htmlFor="username">Email</label>
-        <input
-          type="email"
-          value={studentName}
-          onChange={handleNameChange}
-          required
-        />
-        <label htmlFor="password">Password</label>
-        <input
-          type="password"
-          value={studentPass}
-          onChange={handlePassChange}
-          required
-        />
-        <button type="submit">Login</button>
+
+      {error && <div className="auth-message error-message">{error}</div>}
+
+      <form onSubmit={handleSubmit} className="auth-form">
+        <div className="form-group">
+          <label htmlFor="student-email">Email</label>
+          <input
+            id="student-email"
+            type="email"
+            value={studentName}
+            onChange={handleNameChange}
+            required
+            autoComplete="email"
+            placeholder="Enter your email address"
+          />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="student-password">Password</label>
+          <input
+            id="student-password"
+            type="password"
+            value={studentPass}
+            onChange={handlePassChange}
+            required
+            autoComplete="current-password"
+            placeholder="Enter your password"
+          />
+        </div>
+
+        <button type="submit" className="auth-button" disabled={isLoading}>
+          {isLoading ? "Logging in..." : "Login"}
+        </button>
       </form>
-      <div>
-        New user ?
+
+      <div className="auth-footer">
+        <span>New user?</span>
         <p>
-          <Link to="/register">Register</Link>
+          <Link to="/register" className="auth-link">
+            Register
+          </Link>
         </p>
       </div>
     </div>
