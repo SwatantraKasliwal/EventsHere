@@ -1,4 +1,3 @@
-// export default AdminEvent;
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import "./AdminEvent.css";
@@ -40,6 +39,16 @@ const AdminEvent = ({ adminId }) => {
     }
   };
 
+  // Function to truncate text to approximately 100 words
+  const truncateText = (text, wordLimit = 20) => {
+    if (!text) return "";
+
+    const words = text.split(/\s+/);
+    if (words.length <= wordLimit) return text;
+
+    return words.slice(0, wordLimit).join(" ") + "...";
+  };
+
   return (
     <div className="admin-event">
       <h2>Event Management</h2>
@@ -66,7 +75,7 @@ const AdminEvent = ({ adminId }) => {
                 </button>
               </td>
               <td>{event.event_name}</td>
-              <td>{event.event_details}</td>
+              <td>{truncateText(event.event_details)}</td>
               <td>{event.event_time}</td>
               <td>{new Date(event.event_date).toLocaleDateString()}</td>
               <td>{event.event_venue}</td>

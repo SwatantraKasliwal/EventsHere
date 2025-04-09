@@ -59,6 +59,9 @@ function Navigation() {
   return (
     <>
       <nav className={mobileMenuOpen ? "" : "collapsed"}>
+        <div className="site-branding">
+          <Link to="/">EventsHere</Link>
+        </div>
         <button className="mobile-menu-btn" onClick={toggleMobileMenu}>
           {mobileMenuOpen ? "✕" : "☰"}
         </button>

@@ -1,0 +1,81 @@
+/* Committee.css */
+
+.committee-card {
+  background-color: white;
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  transition: var(--transition);
+  display: flex;
+  flex-direction: column;
+  max-width: 345px;
+  height: 100%;
+}
+
+.committee-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.committee-image-container {
+  width: 100%;
+  height: 200px;
+  overflow: hidden;
+}
+
+.committee-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: var(--transition);
+}
+
+.committee-image:hover {
+  transform: scale(1.05);
+}
+
+.committee-content {
+  padding: 20px;
+  flex-grow: 1;
+}
+
+.committee-title {
+  margin-bottom: 10px;
+  color: var(--primary-color);
+  font-size: 1.25rem;
+  font-weight: 500;
+}
+
+.committee-description {
+  color: #666;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin-bottom: 15px;
+}
+
+.committee-actions {
+  padding: 0 20px 20px;
+}
+
+.committee-button {
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-weight: 500;
+  transition: var(--transition);
+  text-transform: uppercase;
+  font-size: 0.875rem;
+  letter-spacing: 0.5px;
+}
+
+.committee-button:hover {
+  background-color: #303f9f;
+  box-shadow: var(--shadow);
+}
+
+.committee-link {
+  text-decoration: none;
+}
