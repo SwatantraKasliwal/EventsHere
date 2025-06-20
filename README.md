@@ -2,7 +2,7 @@
 ```markdown
 # 🎓 EventsHere - Full Stack Event Management System
 
-CampusConnect is a full-stack event management platform built for college campuses. It allows admins to post events and students to view, filter, and register for them easily.
+EventsHere is a full-stack event management platform built for college campuses. It allows admins to post events and students to view, filter, and register for them easily.
 
 ---
 
