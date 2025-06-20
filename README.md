@@ -1,6 +1,3 @@
-Here's your **complete `README.md`** for the CampusConnect full-stack project using React and Express with PostgreSQL:
-
----
 
 ```markdown
 # 🎓 EventsHere - Full Stack Event Management System
