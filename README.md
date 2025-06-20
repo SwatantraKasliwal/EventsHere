@@ -35,8 +35,7 @@ EventsHere is a full-stack event management platform built for college campuses.
 
 ---
 
-## 📂 Folder Structure
-
+---
 ```
 
 /client         → React frontend (Vite)
@@ -44,7 +43,7 @@ EventsHere is a full-stack event management platform built for college campuses.
 /database       → PostgreSQL schema & setup
 .env            → Environment variables (not committed)
 
-````
+```
 
 ---
 
@@ -180,7 +179,8 @@ Pull requests are welcome! For major changes, please open an issue first to disc
 
 **Swatantra Kasliwal**
 [GitHub](https://github.com/SwatantraKasliwal)
-
+**Disha Holmukhe**
+[GitHub](https://github.com/SwatantraKasliwal)
 ---
 
 
