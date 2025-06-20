@@ -180,7 +180,7 @@ Pull requests are welcome! For major changes, please open an issue first to disc
 **Swatantra Kasliwal**
 [GitHub](https://github.com/SwatantraKasliwal)
 **Disha Holmukhe**
-[GitHub](https://github.com/SwatantraKasliwal)
+[GitHub](https://github.com/DishaHolmukhe)
 ---
 
 
